@@ -108,9 +108,30 @@ export const getSections = async () => {
     }
 };
 
+// 노션이 recordMap 응답을 { value: { value, role } } 로 한 겹 더 감싸도록 변경했다.
+// react-notion-x 6.x 는 { value } 형태를 기대하므로 예전 구조로 되돌려준다.
+const normalizeRecordMap = (recordMap: any) => {
+    const tables = ["block", "collection", "collection_view", "notion_user", "space"];
+    tables.forEach((table) => {
+        const records = recordMap?.[table];
+        if (!records) return;
+        Object.keys(records).forEach((id) => {
+            const entry = records[id];
+            if (entry?.value?.value) {
+                records[id] = {
+                    ...entry,
+                    value: entry.value.value,
+                    role: entry.value.role ?? entry.role,
+                };
+            }
+        });
+    });
+    return recordMap as ExtendedRecordMap;
+};
+
 export const fetchRecordMap = async (pageID: string) => {
     try {
-        const recordMap: ExtendedRecordMap = await recordMapClient.getPage(pageID);
+        const recordMap: ExtendedRecordMap = normalizeRecordMap(await recordMapClient.getPage(pageID));
         return recordMap;
     } catch (e) {
         console.log(e);
