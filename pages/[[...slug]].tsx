@@ -119,8 +119,23 @@ export const getStaticProps: GetStaticProps = async (ctx) => {
     pageTitle = `${chapterTitle} - ${config.site}`;
   }
 
-  if (currentSection) {
+  if (currentSection && chapterTitle) {
     pageTitle = `${chapterTitle} - ${currentSection.title}`;
+  }
+
+  // 노션 본문(recordMap) 조회에 실패하면 그 결과를 캐시에 굳히지 않고
+  // 다음 요청에서 곧바로 다시 시도하게 한다.
+  if (!recordMap) {
+    return {
+      props: {
+        pageID: pageID || "index",
+        pageTitle: pageTitle,
+        currentSection: currentSection,
+        sections: sections,
+        recordMap: null,
+      },
+      revalidate: 10,
+    };
   }
 
   return {
@@ -131,6 +146,8 @@ export const getStaticProps: GetStaticProps = async (ctx) => {
       sections: sections,
       recordMap: recordMap,
     },
-    revalidate: 1,
+    // 기존 1초는 사실상 매 요청마다 노션 비공식 API를 다시 호출해서
+    // 레이트리밋(429)을 부른다. 강의 자료는 자주 안 바뀌므로 넉넉히 잡는다.
+    revalidate: 600,
   };
 };
