@@ -13,6 +13,18 @@ const officalClient = new OfficialClient({
 });
 const recordMapClient = new RecordMapClient({});
 
+// 노션(www.notion.so)이 비공식 API 요청을 User-Agent로 걸러서 403 Forbidden을 준다.
+// notion-client 내부 HTTP 라이브러리(got)의 기본 UA가 여기에 차단되므로
+// 브라우저 UA를 명시적으로 실어 보낸다.
+// getPage에 넘긴 gotOptions는 하위 요청(loadPageChunk / syncRecordValues /
+// queryCollection / getSignedFileUrls) 전부에 그대로 전달된다.
+const NOTION_GOT_OPTIONS = {
+    headers: {
+        "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    },
+};
+
 const convertContentPage = (pageObject: PageObjectResponse) => {
     const { id, last_edited_time } = pageObject;
     const res: ContentPage = {
@@ -65,7 +77,8 @@ export const fetchAllPages = async () => {
         });
         return contents;
     } catch (e) {
-        throw new Error("");
+        console.error("FETCH ALL PAGES ERROR", e);
+        throw new Error("FETCH ALL PAGES ERROR");
     }
 };
 
@@ -104,6 +117,7 @@ export const getSections = async () => {
         }
         return convertPagesToSections(pages);
     } catch (e) {
+        console.error("FETCH SECTION ERROR", e);
         throw new Error("FETCH SECTION ERROR");
     }
 };
@@ -131,7 +145,9 @@ const normalizeRecordMap = (recordMap: any) => {
 
 export const fetchRecordMap = async (pageID: string) => {
     try {
-        const recordMap: ExtendedRecordMap = normalizeRecordMap(await recordMapClient.getPage(pageID));
+        const recordMap: ExtendedRecordMap = normalizeRecordMap(
+            await recordMapClient.getPage(pageID, { gotOptions: NOTION_GOT_OPTIONS })
+        );
         return recordMap;
     } catch (e) {
         console.log(e);
